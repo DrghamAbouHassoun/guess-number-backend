@@ -6,8 +6,11 @@ export type GameDocument = HydratedDocument<Game>;
 
 @Schema({ timestamps: true })
 export class Game {
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Post' }] })
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
   users: User[]
+
+  @Prop({ type: Types.ObjectId, ref: "User" })
+  createdBy: Types.ObjectId;
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);
