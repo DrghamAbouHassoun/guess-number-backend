@@ -13,7 +13,7 @@ export class Record {
   biddingPoints: number;
 
   @Prop({ type: Number })
-  predectingNumber: number;
+  prediction: number;
 
   @Prop({ type: Number })
   result: number;
@@ -34,6 +34,9 @@ export class Round {
 
   @Prop({ type: [Record], default: [] })
   records: Record[]
+
+  @Prop({ type: String, enum: ["started", "finished"], default: "started" })
+  status: string;
 }
 
 export const RoundSchema = SchemaFactory.createForClass(Round)
