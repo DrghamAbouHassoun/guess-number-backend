@@ -1,4 +1,4 @@
-import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
+import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import { GameService } from "./game.service";
 import { Server, Socket } from "socket.io";
 import { Logger, UseGuards } from "@nestjs/common";
@@ -10,7 +10,7 @@ interface ExtendedSocket extends Socket {
   user: any;
 }
 
-@WebSocketGateway(5001, { cors: ["*"] })
+@WebSocketGateway(5001, { cors: ["*"], })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   
   constructor(
@@ -22,14 +22,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   @WebSocketServer() server: Server;
 
   @UseGuards(WsGuard)
-  handleConnection(client: ExtendedSocket) {
+  async handleConnection(client: ExtendedSocket) {
     const user = client["user"];
     if (user._id) {
       this.userService.changeUserStatus({ userId: user._id, status: true });
       console.log("User status updated: ", user._id);
     }
-    console.log("Client connected", client.id);
+
+    console.log("Client connected", user.name);
     this.server.emit("clientConnected", user);
+    const pendingGames = await this.gameService.getPendingGames();
+    this.server.emit("pendingGames", { games: pendingGames })
   }
 
   handleDisconnect(client: ExtendedSocket) {
@@ -40,6 +43,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
     console.log("Client has disconnected", user._id);
     this.server.emit("clientDisconnected", user);
+    console.log("Client Disconnected: ", client.id)
   }
 
   afterInit(server: Server) {
@@ -61,5 +65,15 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     })
     Logger.log("Websocket initialized")
+  }
+
+  @SubscribeMessage("joinGame")
+  async handleJoinRoom(client: Socket, { gameId }: { gameId: string }) {
+    console.log("Join game: ", gameId)
+    const game = await this.gameService.addPlayer(gameId, client["user"]._id)
+    client.join(gameId);
+    console.log(`${client["user"].name} has joined game ${gameId}`)
+    client.to(gameId).emit("userJoinedToRoom", `${client.id} has joined game ${gameId}`);
+    this.server.emit("updatedGame", { game: game });
   }
 }

@@ -44,14 +44,14 @@ export class UserService {
   }
 
   async createUserAccount(data: IUserCreate) {
-    const user = await this.userModel.findOne({ $or: [{ email: data.email, name: data.name }] })
-    if (user) {
+    const isUserExist = await this.userModel.findOne({ email: data.email });
+    if (isUserExist) {
       throw new HttpException({
         success: false,
-        messages: ["User email or name is already taken"],
+        messages: ["Email address is already exist"],
         data: [],
         status: 400,
-      }, 200)
+      }, 200);
     }
     
     const newUser = await this.userModel.create({
